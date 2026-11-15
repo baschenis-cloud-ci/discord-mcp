@@ -6,6 +6,7 @@
     ]
   },
   "context": {
+    "allowed-users": "171733257648341001",
     "@aws-cdk/aws-signer:signingProfileNamePassedToCfn": true,
     "@aws-cdk/core:newStyleStackSynthesis": true,
     "@aws-cdk/core:stackRelativeExports": true,
