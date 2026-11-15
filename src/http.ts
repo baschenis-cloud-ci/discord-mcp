@@ -13,9 +13,17 @@ export const authorized = (header: string | undefined, token: string) => {
 const send = (res: ServerResponse, status: number, body: unknown) =>
   res.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(body));
 
+const MAX_BODY_BYTES = 1024 * 1024;
+class BodyTooLarge extends Error {}
+
 async function readJson(req: IncomingMessage) {
   const chunks: Buffer[] = [];
-  for await (const c of req) chunks.push(c as Buffer);
+  let size = 0;
+  for await (const c of req) {
+    size += (c as Buffer).length;
+    if (size > MAX_BODY_BYTES) throw new BodyTooLarge();
+    chunks.push(c as Buffer);
+  }
   return chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : undefined;
 }
 
@@ -41,7 +49,11 @@ export function createHttpServer(discord: Discord, opts: HttpOptions = {}) {
     let body: unknown;
     try {
       body = await readJson(req);
-    } catch {
+    } catch (e) {
+      if (e instanceof BodyTooLarge) {
+        res.setHeader("connection", "close");
+        return send(res, 413, { error: "payload too large" });
+      }
       return send(res, 400, { jsonrpc: "2.0", error: { code: -32700, message: "Parse error" }, id: null });
     }
 

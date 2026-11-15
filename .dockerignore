@@ -4,3 +4,8 @@ cdk.out
 .git
 infra
 test
+.github
+scripts
+cdk.json
+docker-compose.yml
+README.md

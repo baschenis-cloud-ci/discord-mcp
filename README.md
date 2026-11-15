@@ -19,6 +19,7 @@ Run it locally with Docker, or host it on AWS with Amazon Bedrock AgentCore.
 
 `DISCORD_READ_ONLY=true` exposes only the read tools.
 `DISCORD_ALLOWED_GUILDS=id1,id2` restricts servers.
+`DISCORD_ALLOWED_USERS=id1,id2` (AWS only) restricts who can sign in. Without it, any Discord user can.
 
 ## Discord application
 
@@ -72,13 +73,13 @@ GitHub Actions (`.github/workflows/deploy.yml`) deploys on push to `main`, in th
 One-time setup:
 
 1. `npm run ci-role` with an admin profile. It creates the GitHub Actions role.
-2. In the `discord` environment: variable `DISCORD_CLIENT_ID`, secret `DISCORD_CLIENT_SECRET`. Optional: `DISCORD_READ_ONLY`, `DISCORD_ALLOWED_GUILDS`.
+2. In the `discord` environment: variable `DISCORD_CLIENT_ID`, secret `DISCORD_CLIENT_SECRET`. Recommended: `DISCORD_ALLOWED_USERS`. Optional: `DISCORD_READ_ONLY`, `DISCORD_ALLOWED_GUILDS`.
 
 Or from your machine (needs Docker for the arm64 image):
 
 ```sh
 npm ci
-DISCORD_CLIENT_ID=<id> DISCORD_CLIENT_SECRET=<secret> npm run deploy
+DISCORD_CLIENT_ID=<id> DISCORD_CLIENT_SECRET=<secret> ALLOWED_USERS=<your Discord user ID> npm run deploy
 ```
 
 ### 3. Discord redirect

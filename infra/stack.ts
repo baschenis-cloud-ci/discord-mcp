@@ -4,6 +4,7 @@ import { Annotations, Aws, CfnOutput, CfnParameter, Duration, RemovalPolicy, Sta
 import * as agentcore from "aws-cdk-lib/aws-bedrockagentcore";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import { Platform } from "aws-cdk-lib/aws-ecr-assets";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as secrets from "aws-cdk-lib/aws-secretsmanager";
 import type { Construct } from "constructs";
 
@@ -18,7 +19,18 @@ export interface DiscordMcpStackProps extends StackProps {
   callbackPort: number;
   readOnly: boolean;
   allowedGuilds: string[];
+  /** Discord user IDs allowed to sign in. Empty: any Discord user. */
+  allowedUsers: string[];
 }
+
+// Runs on every sign-in and token refresh. Throwing denies the token.
+const ALLOW_LIST_HANDLER = `
+exports.handler = async (event) => {
+  const allowed = process.env.ALLOWED_USERS.split(",");
+  const ids = JSON.parse(event.request.userAttributes.identities || "[]").map((i) => i.userId);
+  if (!ids.some((id) => allowed.includes(id))) throw new Error("Discord user not allowed");
+  return event;
+};`;
 
 export class DiscordMcpStack extends Stack {
   constructor(scope: Construct, id: string, props: DiscordMcpStackProps) {
@@ -42,6 +54,20 @@ export class DiscordMcpStack extends Stack {
       signInAliases: { username: true },
       removalPolicy: RemovalPolicy.DESTROY,
     });
+
+    if (props.allowedUsers.length) {
+      userPool.addTrigger(
+        cognito.UserPoolOperation.PRE_TOKEN_GENERATION,
+        new lambda.Function(this, "AllowList", {
+          runtime: lambda.Runtime.NODEJS_24_X,
+          handler: "index.handler",
+          code: lambda.Code.fromInline(ALLOW_LIST_HANDLER),
+          environment: { ALLOWED_USERS: props.allowedUsers.join(",") },
+        }),
+      );
+    } else {
+      Annotations.of(this).addWarning("allowed-users is empty: any Discord user can sign in and use the bot");
+    }
 
     const discord = new cognito.UserPoolIdentityProviderOidc(this, "Discord", {
       userPool,

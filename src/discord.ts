@@ -1,4 +1,7 @@
 const API = "https://discord.com/api/v10";
+const TIMEOUT_MS = 15_000;
+/** Longest rate-limit wait we accept before giving up. */
+const MAX_RETRY_AFTER_S = 10;
 
 export class DiscordError extends Error {
   constructor(
@@ -28,10 +31,13 @@ export class Discord {
           "User-Agent": "DiscordBot (https://github.com/aws-abaschen/aws-discord-mcp, 1.0.0)",
         },
         body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
       });
       if (res.status === 429 && attempt < 3) {
         const data = (await res.json().catch(() => ({}))) as { retry_after?: number };
-        await new Promise((r) => setTimeout(r, Math.ceil((data.retry_after ?? 1) * 1000)));
+        const wait = data.retry_after ?? 1;
+        if (wait > MAX_RETRY_AFTER_S) throw new DiscordError(429, `Discord ${method} ${path}: rate limited for ${wait}s`);
+        await new Promise((r) => setTimeout(r, Math.ceil(wait * 1000)));
         continue;
       }
       if (!res.ok) throw new DiscordError(res.status, `Discord ${method} ${path}: ${res.status} ${await res.text()}`);

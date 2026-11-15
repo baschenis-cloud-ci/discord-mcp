@@ -25,11 +25,11 @@ export class CiRoleStack extends Stack {
       `arn:aws:iam::${this.account}:oidc-provider/token.actions.githubusercontent.com`,
     );
 
-    // Same subjects as the other repos of the org: plain and immutable (owner@id/repo@id) forms.
-    const subjects = [`${ORG}/${props.repo}`, `${ORG}@${ORG_ID}/${props.repo}@*`].flatMap((r) => [
-      `repo:${r}:pull_request`,
-      `repo:${r}:environment:${props.environment}`,
-    ]);
+    // Plain and immutable (owner@id/repo@id) forms. Only the deploy environment:
+    // a pull_request subject would let any branch deploy and skip the environment rules.
+    const subjects = [`${ORG}/${props.repo}`, `${ORG}@${ORG_ID}/${props.repo}@*`].map(
+      (r) => `repo:${r}:environment:${props.environment}`,
+    );
 
     const role = new iam.Role(this, "DeployRole", {
       roleName: `github-actions-${props.repo}`,

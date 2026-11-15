@@ -49,3 +49,8 @@ it("checks the bearer token", () => {
   expect(authorized(undefined, "abc")).toBe(false);
   expect(authorized("Bearer ", "")).toBe(false);
 });
+
+it("rejects an oversized body", async () => {
+  const res = await rpc({ pad: "x".repeat(1024 * 1024) });
+  expect(res.status).toBe(413);
+});
